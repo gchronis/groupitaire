@@ -16,7 +16,15 @@
 #include "carddeck.h"
 
 #define MAXLINE 80
-#define MAXCONNECTIONS 1
+#define MAXCONNECTIONS 1024
+
+typedef struct _client_t {
+	int id;
+	int connections;
+	srtruct sockaddr_in address;
+	arena_t arena;
+	deck_t deck;
+} client_t;
 
 arena_t *newArena() {
   arena_t *arena = (arena_t *)malloc(sizeof(arena_t));
@@ -189,10 +197,9 @@ void sendAck(int client, int ack) {
   }
 }
 
-void playSolitaire(int client, deck_t *deck) {
+void playSolitaire(void *client) {
 
   // initialize
-  arena_t *arena = newArena();
   deal_t *deal = newDeal(deck);
 
   play_t play;
@@ -304,9 +311,32 @@ int main(int argc, char **argv) {
     fprintf(stderr, "usage: %s <port>\n", argv[0]);
     exit(0);
   }
-
+  
+  arena_t *arena = newArena();
   int listener = initConnection(atoi(argv[1]));
+  
+  int clients = 0
+  while (1) {
+  	clients++;
+  	
+  //
+  // Build a client's profile to send to a handler thread
+  //
+  client_t *client = (client_t *)malloc(sizeof(client_t));
+  
+  //
+  // Accept a connection from a client, get a file descriptor for communicating
+  // with the client
+  //
+  client->id = clients;
   int client = acceptClientOn(listener);
+  }
+  
+  //
+  // create a thread to handle the client
+  //
+  pthread_t tid;
+  pthread_create(&tid,NULL,playSolitaire, (void *)client);
 
   unsigned long seed = 0;
   if (argc == 1) {
@@ -319,7 +349,9 @@ int main(int argc, char **argv) {
   printf("Shuffling with seed %ld.\n",seed);
   srand48(seed);
 
+
   deck_t *deck = newDeck();
   shuffle(deck);
-  playSolitaire(client,deck);
+  playSolitaire(client);
+}
 }
